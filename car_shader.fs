@@ -34,6 +34,7 @@ uniform Material material;
 uniform vec3 viewPos;
 uniform vec3 lightDir;
 uniform vec3 lightColor;
+uniform vec3 ambientTint;
 
 void main() {
     vec4 baseColor = material.baseColorFactor;
@@ -81,7 +82,7 @@ void main() {
         specPower *= texture(material.glossinessMap, fs_in.TexCoords).r;
     }
 
-    vec3 ambient = 0.08 * baseColor.rgb * ao;
+    vec3 ambient = (0.08 * baseColor.rgb + ambientTint) * ao;
     vec3 diffuse = diff * baseColor.rgb;
     vec3 specular = specStrength * specPower * lightColor;
 
