@@ -2,6 +2,7 @@
 #define SHADER_H
 
 #include <glad/glad.h>
+#include <glm/glm.hpp>
 #include <string>
 #include <fstream>
 #include <sstream>
@@ -58,6 +59,15 @@ public:
     }
     void setVec4(const std::string& name, const glm::vec4& value) const {
         glUniform4f(glGetUniformLocation(ID, name.c_str()), value.x, value.y, value.z, value.w);
+    }
+    void setVec3(const std::string& name, const glm::vec3& value) const {
+        glUniform3f(glGetUniformLocation(ID, name.c_str()), value.x, value.y, value.z);
+    }
+    void setFloat(const std::string& name, float value) const {
+        glUniform1f(glGetUniformLocation(ID, name.c_str()), value);
+    }
+    void setInt(const std::string& name, int value) const {
+        glUniform1i(glGetUniformLocation(ID, name.c_str()), value);
     }
 };
 #endif
