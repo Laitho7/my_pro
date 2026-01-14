@@ -9,6 +9,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <fstream>
 
 const unsigned int SCR_WIDTH = 1200;
 const unsigned int SCR_HEIGHT = 900;
@@ -25,7 +26,8 @@ float elevatorY = 0.0f;
 float targetElevatorY = 0.0f;
 float elevatorDoorOffset = 0.0f;
 const float floorHeight = 60.0f;
-const glm::vec3 showroomCarPos(0.0f, 2.0f, -30.0f);
+const float groundFloorY = -2.3f;
+const glm::vec3 showroomCarPos(0.0f, groundFloorY, -30.0f);
 
 void processInput(GLFWwindow* window);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -34,6 +36,7 @@ void drawRockArch(Shader& shader, glm::vec3 position);
 void drawLetter(Shader& shader, char letter, glm::vec3 pos, float scale);
 void drawBuildings(Shader& shader, unsigned int VAO);
 void drawWorldCube(Shader& shader, unsigned int VAO);
+std::string resolveAssetPath(const std::string& filename);
 
 int main() {
     if (!glfwInit()) return -1;
@@ -55,10 +58,10 @@ int main() {
 
     Shader ourShader("shader.vs", "shader.fs");
     Shader carShader("car_shader.vs", "car_shader.fs");
-    Car car("lamborghini_venevo.glb");
-    car.autoScaleToFit(35.0f);
-    car.setTransform(showroomCarPos, glm::radians(180.0f), glm::vec3(1.0f));
-    car.alignToGround(0.0f);
+    Car car(resolveAssetPath("lamborghini_venevo.glb"));
+    car.autoScaleToFit(70.0f);
+    car.setTransform(showroomCarPos, glm::radians(0.0f), glm::vec3(5.0f));
+    car.alignToGround(groundFloorY);
     car.setWorldBounds(glm::vec3(-140.0f, -10.0f, -140.0f), glm::vec3(140.0f, 50.0f, 140.0f));
 
     float vertices[] = {
@@ -118,6 +121,7 @@ int main() {
         carShader.setVec3("viewPos", camera.Position);
         carShader.setVec3("lightDir", glm::vec3(-0.6f, -1.0f, -0.4f));
         carShader.setVec3("lightColor", glm::vec3(1.0f));
+        carShader.setVec3("ambientTint", glm::vec3(0.08f, 0.05f, 0.12f));
         car.draw(carShader);
 
         glfwSwapBuffers(window);
@@ -127,6 +131,29 @@ int main() {
     glDeleteBuffers(1, &VBO);
     glfwTerminate();
     return 0;
+}
+
+std::string resolveAssetPath(const std::string& filename) {
+    std::vector<std::string> candidates;
+    candidates.reserve(6);
+    candidates.push_back(filename);
+    candidates.push_back("./" + filename);
+    candidates.push_back("../" + filename);
+    candidates.push_back("../../" + filename);
+    candidates.push_back("../../../" + filename);
+    candidates.push_back("../../../../" + filename);
+
+    for (const auto& candidate : candidates) {
+        std::ifstream file(candidate.c_str(), std::ios::in | std::ios::binary);
+        if (file.good()) {
+            return candidate;
+        }
+    }
+
+    std::cerr << "WARNING: Could not find asset " << filename
+        << " in common working directories. Using filename as-is."
+        << std::endl;
+    return filename;
 }
 
 void drawBuildings(Shader& shader, unsigned int VAO) {
