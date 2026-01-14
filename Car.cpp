@@ -118,10 +118,10 @@ void Car::draw(Shader& shader) {
 }
 
 void Car::handleInput(GLFWwindow* window, float dt) {
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
         speed_ = clamp(speed_ + acceleration_ * dt, -maxSpeed_, maxSpeed_);
     }
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
         speed_ = clamp(speed_ - brakeDecel_ * dt, -maxSpeed_, maxSpeed_);
     }
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
