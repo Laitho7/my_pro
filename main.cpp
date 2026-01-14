@@ -5,6 +5,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "Shader.h" 
 #include "Camera.h"  
+#include "Car.h"
 #include <iostream>
 #include <vector>
 #include <string>
@@ -24,6 +25,7 @@ float elevatorY = 0.0f;
 float targetElevatorY = 0.0f;
 float elevatorDoorOffset = 0.0f;
 const float floorHeight = 60.0f;
+const glm::vec3 showroomCarPos(0.0f, 2.0f, -30.0f);
 
 void processInput(GLFWwindow* window);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -52,6 +54,12 @@ int main() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     Shader ourShader("shader.vs", "shader.fs");
+    Shader carShader("car_shader.vs", "car_shader.fs");
+    Car car("lamborghini_venevo.glb");
+    car.autoScaleToFit(35.0f);
+    car.setTransform(showroomCarPos, glm::radians(180.0f), glm::vec3(1.0f));
+    car.alignToGround(0.0f);
+    car.setWorldBounds(glm::vec3(-140.0f, -10.0f, -140.0f), glm::vec3(140.0f, 50.0f, 140.0f));
 
     float vertices[] = {
         -0.5f,-0.5f,-0.5f,  0.5f,-0.5f,-0.5f,  0.5f, 0.5f,-0.5f,  0.5f, 0.5f,-0.5f, -0.5f, 0.5f,-0.5f, -0.5f,-0.5f,-0.5f,
@@ -76,6 +84,9 @@ int main() {
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
         processInput(window);
+        car.handleInput(window, deltaTime);
+        car.update(deltaTime);
+        car.setCameraPosition(camera.Position);
 
         if (elevatorY < targetElevatorY) elevatorY += 25.0f * deltaTime;
         if (elevatorY > targetElevatorY) elevatorY -= 25.0f * deltaTime;
@@ -100,6 +111,14 @@ int main() {
         drawWorldCube(ourShader, VAO);
         drawBuildings(ourShader, VAO);
         drawScene(ourShader, VAO);
+
+        carShader.use();
+        carShader.setMat4("projection", projection);
+        carShader.setMat4("view", camera.GetViewMatrix());
+        carShader.setVec3("viewPos", camera.Position);
+        carShader.setVec3("lightDir", glm::vec3(-0.6f, -1.0f, -0.4f));
+        carShader.setVec3("lightColor", glm::vec3(1.0f));
+        car.draw(carShader);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -161,10 +180,10 @@ void drawScene(Shader& shader, unsigned int VAO) {
 
     float sw = 80.0f;
     float rw = 120.0f;
-   glm::mat4 plazaModel = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.5f, 190.0f)); 
-shader.setMat4("model", glm::scale(plazaModel, glm::vec3(300.0f, 3.0f, 80.0f))); 
-shader.setVec4("ourColor", plazaColor);
-glDrawArrays(GL_TRIANGLES, 0, 36);;
+    glm::mat4 plazaModel = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.5f, 190.0f));
+    shader.setMat4("model", glm::scale(plazaModel, glm::vec3(300.0f, 3.0f, 80.0f)));
+    shader.setVec4("ourColor", plazaColor);
+    glDrawArrays(GL_TRIANGLES, 0, 36);;
 
     for (int side = 0; side < 4; side++) {
         glm::mat4 sideRot = glm::rotate(glm::mat4(1.0f), glm::radians(side * 90.0f), glm::vec3(0, 1, 0));
@@ -172,7 +191,7 @@ glDrawArrays(GL_TRIANGLES, 0, 36);;
         shader.setMat4("model", glm::scale(roadModel, glm::vec3(roomDim + (sw * 2) + (rw * 2), 4.0f, rw)));
         shader.setVec4("ourColor", roadColor);
         glDrawArrays(GL_TRIANGLES, 0, 36);
-       
+
         for (int i = 0; i < 8; i++) {
             float lineX = -300.0f + (i * 60.0f);
             glm::mat4 lineModel = glm::translate(sideRot, glm::vec3(lineX, -0.5f, (roomDim / 2.0f) + sw + (rw / 2.0f)));
@@ -195,7 +214,7 @@ glDrawArrays(GL_TRIANGLES, 0, 36);;
         }
     }
     glm::vec4 asphaltColor(0.06f, 0.06f, 0.07f, 1.0f);
-    glm::vec4 linePColor(1.0f, 1.0f, 1.0f, 0.6f); 
+    glm::vec4 linePColor(1.0f, 1.0f, 1.0f, 0.6f);
     glm::vec4 stopperColor(0.25f, 0.25f, 0.28f, 1.0f);
     glm::mat4 parkBase = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.5f, 525.0f));
     shader.setMat4("model", glm::scale(parkBase, glm::vec3(300.0f, 2.0f, 350.0f)));
@@ -204,11 +223,11 @@ glDrawArrays(GL_TRIANGLES, 0, 36);;
     for (int p = 0; p < 3; p++) {
         float px = -100.0f + (p * 100.0f);
         glm::mat4 lineM = glm::translate(glm::mat4(1.0f), glm::vec3(px, -1.6f, 525.0f));
-        shader.setMat4("model", glm::scale(lineM, glm::vec3(8.0f, 0.8f, 320.0f))); 
+        shader.setMat4("model", glm::scale(lineM, glm::vec3(8.0f, 0.8f, 320.0f)));
         shader.setVec4("ourColor", linePColor);
         glDrawArrays(GL_TRIANGLES, 0, 36);
         glm::mat4 stopM = glm::translate(glm::mat4(1.0f), glm::vec3(px, -0.5f, 680.0f));
-        shader.setMat4("model", glm::scale(stopM, glm::vec3(90.0f, 5.0f, 15.0f))); 
+        shader.setMat4("model", glm::scale(stopM, glm::vec3(90.0f, 5.0f, 15.0f)));
         shader.setVec4("ourColor", stopperColor);
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
@@ -216,7 +235,7 @@ glDrawArrays(GL_TRIANGLES, 0, 36);;
         float lx = (l == 0) ? -145.0f : 145.0f;
         float lZ = 600.0f;
         glm::mat4 poleM = glm::translate(glm::mat4(1.0f), glm::vec3(lx, 45.0f, lZ));
-        shader.setMat4("model", glm::scale(poleM, glm::vec3(10.0f, 100.0f, 10.0f))); 
+        shader.setMat4("model", glm::scale(poleM, glm::vec3(10.0f, 100.0f, 10.0f)));
         shader.setVec4("ourColor", beamColor);
         glDrawArrays(GL_TRIANGLES, 0, 36);
         glm::mat4 lightM = glm::translate(glm::mat4(1.0f), glm::vec3(lx, 90.0f, lZ - 20.0f));
