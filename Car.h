@@ -58,6 +58,7 @@ public:
     void setDoorHingeLocal(const glm::vec3& hingeLocal);
     void setWheelMeshNames(const std::vector<std::string>& meshNames, bool steerable, const glm::vec3& pivotLocal);
     void setWorldBounds(const glm::vec3& minBounds, const glm::vec3& maxBounds);
+    bool isDriverDoorOpen() const { return driverDoor_.isOpen; }
 
     CarCameraPose getDriverSeatCameraPose() const;
     CarBoundingBox getCarBoundingBoxOrOBB() const;
@@ -84,7 +85,7 @@ private:
     float drag_ = 2.5f;
 
     glm::vec3 cameraPosition_ = glm::vec3(0.0f);
-    glm::vec3 driverSeatOffset_ = glm::vec3(0.7f, 1.1f, 0.2f);
+    glm::vec3 driverSeatOffset_ = glm::vec3(-0.6f, 3.2f, 0.8f);
     glm::vec3 localOffset_ = glm::vec3(0.0f);
 
     CarDoor driverDoor_;
