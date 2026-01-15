@@ -6,6 +6,7 @@
 #include "Shader.h" 
 #include "Camera.h"  
 #include "Car.h"
+#include <cmath>
 #include <iostream>
 #include <vector>
 #include <string>
@@ -20,6 +21,7 @@ bool firstMouse = true;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 float doorOffset = 0.0f;
+bool inDriverSeat = false;
 
 // متغيرات المصعد
 float elevatorY = 0.0f;
@@ -29,7 +31,7 @@ const float floorHeight = 60.0f;
 const float groundFloorY = -2.3f;
 const glm::vec3 showroomCarPos(0.0f, groundFloorY, -30.0f);
 
-void processInput(GLFWwindow* window);
+void processInput(GLFWwindow* window, Car& car);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void drawScene(Shader& shader, unsigned int VAO);
 void drawRockArch(Shader& shader, glm::vec3 position);
@@ -37,6 +39,7 @@ void drawLetter(Shader& shader, char letter, glm::vec3 pos, float scale);
 void drawBuildings(Shader& shader, unsigned int VAO);
 void drawWorldCube(Shader& shader, unsigned int VAO);
 std::string resolveAssetPath(const std::string& filename);
+void syncCameraOrientation(Camera& cam, const glm::vec3& forward);
 
 int main() {
     if (!glfwInit()) return -1;
@@ -63,6 +66,7 @@ int main() {
     car.setTransform(showroomCarPos, glm::radians(0.0f), glm::vec3(5.0f));
     car.alignToGround(groundFloorY);
     car.setWorldBounds(glm::vec3(-140.0f, -10.0f, -140.0f), glm::vec3(140.0f, 50.0f, 140.0f));
+    car.setWheelMeshNames({ "wheel", "Wheel", "tire", "Tire" }, false, glm::vec3(0.0f));
 
     float vertices[] = {
         -0.5f,-0.5f,-0.5f,  0.5f,-0.5f,-0.5f,  0.5f, 0.5f,-0.5f,  0.5f, 0.5f,-0.5f, -0.5f, 0.5f,-0.5f, -0.5f,-0.5f,-0.5f,
@@ -86,10 +90,14 @@ int main() {
         float currentFrame = (float)glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
-        processInput(window);
+        processInput(window, car);
         car.handleInput(window, deltaTime);
         car.update(deltaTime);
         car.setCameraPosition(camera.Position);
+        if (inDriverSeat) {
+            CarCameraPose pose = car.getDriverSeatCameraPose();
+            camera.Position = pose.position;
+        }
 
         if (elevatorY < targetElevatorY) elevatorY += 25.0f * deltaTime;
         if (elevatorY > targetElevatorY) elevatorY -= 25.0f * deltaTime;
@@ -458,8 +466,32 @@ void drawRockArch(Shader& shader, glm::vec3 position) {
     }
 }
 
-void processInput(GLFWwindow* window) {
+void processInput(GLFWwindow* window, Car& car) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) glfwSetWindowShouldClose(window, true);
+    static bool lastEnter = false;
+    bool enterPressed = glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS;
+    if (enterPressed && !lastEnter) {
+        CarCameraPose pose = car.getDriverSeatCameraPose();
+        CarBoundingBox bounds = car.getCarBoundingBoxOrOBB();
+        glm::vec3 carCenter = (bounds.min + bounds.max) * 0.5f;
+        float distToSeat = glm::distance(camera.Position, pose.position);
+        float distToCar = glm::distance(camera.Position, carCenter);
+        if (inDriverSeat) {
+            inDriverSeat = false;
+            glm::vec3 right = glm::normalize(glm::cross(pose.forward, pose.up));
+            camera.Position = pose.position - right * 18.0f + pose.up * 2.0f - pose.forward * 6.0f;
+        }
+        else if (distToSeat < 45.0f || distToCar < 70.0f || car.isDriverDoorOpen()) {
+            inDriverSeat = true;
+            camera.Position = pose.position;
+            syncCameraOrientation(camera, pose.forward);
+        }
+    }
+    lastEnter = enterPressed;
+
+    if (inDriverSeat) {
+        return;
+    }
     float s = 120.0f * deltaTime;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera.Position += s * camera.Front;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera.Position -= s * camera.Front;
@@ -484,6 +516,12 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
     float xoff = xpos - lastX; float yoff = lastY - ypos;
     lastX = xpos; lastY = ypos;
     camera.ProcessMouseMovement(xoff, yoff);
+}
+
+void syncCameraOrientation(Camera& cam, const glm::vec3& forward) {
+    cam.Front = glm::normalize(forward);
+    cam.Pitch = glm::degrees(std::asin(cam.Front.y));
+    cam.Yaw = glm::degrees(std::atan2(cam.Front.z, cam.Front.x));
 }
 
 void drawLetter(Shader& shader, char letter, glm::vec3 pos, float scale) {
